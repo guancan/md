@@ -423,3 +423,5 @@ export function processClipboardContent(primaryColor: string) {
     grand.appendChild(section)
   })
 }
+
+export { exportImage } from './exportImage'
