@@ -19,13 +19,13 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'update:open': [value: boolean]
-  'download': []
+  (e: `update:open`, value: boolean): void
+  (e: `download`): void
 }>()
 
 const store = useStore()
 const { primaryColor, isDark, output } = storeToRefs(store)
-const previewUrl = ref('')
+const previewUrl = ref(``)
 const isGenerating = ref(false)
 
 // 与主编辑器一致的预览容器引用
@@ -36,23 +36,32 @@ watch(() => props.open, async (newVal) => {
     try {
       isGenerating.value = true
       const wasInDarkMode = isDark.value
-      
-      // 临时切换主题（与主编辑器逻辑一致）
+
+      // 强制显示预览容器并等待布局稳定
+      await nextTick()
+      const container = outputWrapper.value!
+      container.style.display = `block`
+      await new Promise(resolve => requestAnimationFrame(resolve))
+
+      // 临时切换主题（需要完整重绘）
       if (wasInDarkMode) {
         store.toggleDark()
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 300)) // 等待主题切换
       }
 
-      // 使用主编辑器的渲染结果
-      await nextTick()
+      // 生成图片前强制重绘
+      void container.offsetHeight // 明确表示有意使用副作用
+
       previewUrl.value = await exportImage(primaryColor.value)
 
       // 恢复主题
       if (wasInDarkMode) {
         store.toggleDark()
+        await nextTick()
       }
-    } catch (error) {
-      console.error('生成预览失败:', error)
-    } finally {
+    }
+    finally {
       isGenerating.value = false
     }
   }
@@ -60,20 +69,22 @@ watch(() => props.open, async (newVal) => {
 
 // 保持与主编辑器一致的下载逻辑
 async function handleDownload() {
-  if (!previewUrl.value) return
-  
+  if (!previewUrl.value)
+    return
+
   try {
-    const link = document.createElement('a')
+    const link = document.createElement(`a`)
     link.download = `md-content-${new Date().getTime()}.png`
     link.href = previewUrl.value
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    
-    emit('download')
-    emit('update:open', false)
-  } catch (error) {
-    console.error('下载失败:', error)
+
+    emit(`download`)
+    emit(`update:open`, false)
+  }
+  catch (error) {
+    console.error(`下载失败:`, error)
   }
 }
 </script>
@@ -89,22 +100,22 @@ async function handleDownload() {
       </AlertDialogHeader>
 
       <!-- 与主编辑器一致的预览结构 -->
-      <div class="my-4 overflow-hidden rounded-md border max-h-[60vh] p-4">
-        <div 
-          id="output-wrapper" 
+      <div class="my-4 max-h-[60vh] overflow-hidden border rounded-md p-4">
+        <div
+          id="output-wrapper"
           ref="outputWrapper"
           class="relative h-full"
           :class="{ output_night: isDark }"
         >
-          <div class="h-full overflow-auto preview">
+          <div class="preview h-full overflow-auto">
             <!-- 实时渲染内容 -->
-            <section 
+            <section
               v-if="output"
               id="output"
               class="prose dark:prose-invert max-w-none p-4"
               v-html="output"
             />
-            
+
             <!-- 加载状态 -->
             <div v-if="isGenerating" class="loading-mask">
               <div class="loading-mask-box">

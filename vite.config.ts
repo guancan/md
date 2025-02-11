@@ -48,6 +48,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      'dom-to-image': `dom-to-image/src/dom-to-image.js`,
       '@': path.resolve(__dirname, `./src`),
     },
   },
@@ -62,5 +63,8 @@ export default defineConfig({
         assetFileNames: `static/[ext]/md-[name]-[hash].[ext]`,
       },
     },
+  },
+  optimizeDeps: {
+    include: [`dom-to-image`],
   },
 })

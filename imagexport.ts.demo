@@ -1,0 +1,186 @@
+import domtoimage from 'dom-to-image-more'
+import type { ImageExportOptions } from '../types/imageExportOptions'
+
+export const exportToImage = async (
+  element: HTMLElement,
+  width: number = 768,
+  options?: ImageExportOptions,
+  content: string = '',
+  scale: number = 2
+) => {
+  const originalStyles = {
+    width: element.style.width,
+    height: element.style.height,
+    position: element.style.position,
+    overflow: element.style.overflow,
+    transform: element.style.transform,
+    transformOrigin: element.style.transformOrigin,
+  }
+
+  const getFileName = (index: number, total: number) => {
+    // 提取文本（最多10个字符）
+    const contentSnippet = (content.slice(0, 10) || 'export').replace(/[\\/:*?"<>|]/g, '')
+    
+    // 获取可读时间戳
+    const now = new Date()
+    const date = now.toISOString().split('T')[0]  // YYYY-MM-DD
+    const time = now.toTimeString().split(' ')[0].replace(/:/g, '-')  // HH-MM-SS
+    
+    // 组合文件名：文本_日期_时间_[总数-序号].png
+    return `${contentSnippet}_${date}_${time}_[${total}-${index + 1}].png`
+  }
+
+  try {
+    Object.assign(element.style, {
+      width: `${width}px`,
+      height: 'auto',
+      position: 'relative',
+      overflow: 'visible',
+      transform: 'none',
+      transformOrigin: 'center top',
+    })
+
+    if (options?.autoCrop) {
+      const { cropHeight = 800, redundancyPercent = 5 } = options
+      const totalHeight = element.scrollHeight
+      console.log(`完整文档高度: ${totalHeight}`); // 打印完整文档高度
+      const overlap = cropHeight * (redundancyPercent / 100); // 计算冗余高度
+      console.log(`冗余高度: ${overlap}`); // 打印冗余高度
+      const effectiveHeight = cropHeight - overlap; // 计算有效高度
+      console.log(`有效高度: ${effectiveHeight}`); // 打印有效高度
+      const pages = Math.ceil(totalHeight / effectiveHeight); // 计算切片数量
+      console.log(`切片数量: ${pages}`); // 打印切片数量
+      // 创建一个固定的容器
+      const container = document.createElement('div')
+      container.style.cssText = `
+        position: fixed;
+        left: -9999px;
+        top: 0;
+        width: ${width}px;
+        height: ${cropHeight}px;
+        overflow: hidden;
+      `
+      document.body.appendChild(container)
+
+      for (let i = 0; i < pages; i++) {
+        const clone = element.cloneNode(true) as HTMLElement
+        
+        const startY = i * (cropHeight - overlap);
+        const endY = (i === pages - 1) ? totalHeight : startY + cropHeight;
+        const sliceHeight = endY - startY;
+
+        console.log(`切片 ${i + 1}/${pages}: 起始位置 = ${startY}, 结束位置 = ${endY}, 高度 = ${sliceHeight}`);
+
+        Object.assign(clone.style, {
+          width: `${width}px`,
+          height: `${sliceHeight}px`,
+          position: 'absolute',
+          top: `${-startY}px`,
+          left: '0',
+          transform: 'none',
+        })
+
+        // 清空容器并添加新的克隆元素
+        container.innerHTML = ''
+        container.style.height = `${sliceHeight}px`; // 设置容器高度
+        container.appendChild(clone)
+
+        try {
+          // 等待样式应用
+          await new Promise(resolve => setTimeout(resolve, 100))
+
+          // 导出当前切片
+          const dataUrl = await domtoimage.toPng(container, {
+            width,
+            height: sliceHeight,
+            bgcolor: 'white',
+            style: {
+              'watermark.css': document.querySelector('link[href*="watermark.css"]')?.outerHTML || ''
+            } as Record<string, string>,
+            scale
+          })
+
+          // 下载当前切片
+          const link = document.createElement('a')
+          link.download = getFileName(i, pages)
+          link.href = dataUrl
+          link.click()
+        } catch (error) {
+          console.error(`Error exporting slice ${i + 1}:`, error)
+        }
+      }
+
+      // 清理临时容器
+      document.body.removeChild(container)
+    } else {
+      // 单图导出
+      const dataUrl = await domtoimage.toPng(element, {
+        bgcolor: 'white',
+        style: {
+          'watermark.css': document.querySelector('link[href*="watermark.css"]')?.outerHTML || ''
+        } as Record<string, string>,
+        scale
+      })
+      const link = document.createElement('a')
+      link.download = getFileName(0, 1)
+      link.href = dataUrl
+      link.click()
+    }
+  } catch (error) {
+    console.error('Export error:', error)
+    throw error
+  } finally {
+    // 恢复原始样式
+    Object.assign(element.style, originalStyles)
+  }
+}
+
+export const exportToHtml = () => {
+  // 创建完整的 HTML 文档
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Markdown Export</title>
+  <!-- 引入必要的样式 -->
+  <link rel="stylesheet" href="https://unpkg.com/bytemd/dist/index.css">
+  <link rel="stylesheet" href="https://unpkg.com/github-markdown-css">
+  <!-- 添加基础样式 -->
+  <style>
+    .markdown-body {
+      box-sizing: border-box;
+      min-width: 200px;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 45px;
+      background-color: white;
+    }
+    @media (max-width: 767px) {
+      .markdown-body {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="markdown-body">
+    ${document.querySelector('.markdown-body')?.innerHTML || ''}
+  </div>
+  <!-- 引入必要的插件 -->
+  <script src="https://unpkg.com/@bytemd/plugin-gfm/dist/index.js"></script>
+  <script src="https://unpkg.com/@bytemd/plugin-highlight/dist/index.js"></script>
+  <script src="https://unpkg.com/@bytemd/plugin-math/dist/index.js"></script>
+  <script src="https://unpkg.com/@bytemd/plugin-mermaid/dist/index.js"></script>
+</body>
+</html>`
+
+  // 创建并下载文件
+  const blob = new Blob([htmlContent], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'markdown-export.html'
+  a.click()
+  URL.revokeObjectURL(url)
+}

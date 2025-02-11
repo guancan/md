@@ -424,4 +424,4 @@ export function processClipboardContent(primaryColor: string) {
   })
 }
 
-export { exportImage } from './exportImage'
+export * from './exportImage'
