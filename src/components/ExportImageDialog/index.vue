@@ -47,7 +47,10 @@ watch(() => props.open, async (newVal) => {
       if (wasInDarkMode) {
         store.toggleDark()
         await nextTick()
-        await new Promise(resolve => setTimeout(resolve, 300)) // 等待主题切换
+        await new Promise((resolve) => {
+          // 确保主题切换后的重绘完成
+          requestAnimationFrame(() => requestAnimationFrame(resolve))
+        })
       }
 
       // 生成图片前强制重绘

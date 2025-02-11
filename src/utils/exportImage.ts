@@ -17,22 +17,28 @@ export async function exportImage(_primaryColor: string): Promise<string> {
   const originalWidth = element.clientWidth || 800 // 默认宽度
   const originalHeight = element.scrollHeight || 600 // 默认高度
 
-  Object.assign(container.style, {
-    position: `fixed`,
-    left: `-9999px`,
-    width: `${originalWidth}px`,
-    height: `${originalHeight}px`, // 明确高度
-    overflow: `visible`, // 确保内容可见
-    background: `#ffffff`,
-    padding: `20px`,
-    zIndex: `9999`, // 确保层级最高
-  })
+  container.style.cssText = `
+    position: fixed;
+    left: 0px;
+    top: 0;
+    width: ${originalWidth}px;
+    height: ${originalHeight}px;
+    overflow: visible;
+    background: #fff;
+    z-index: 9999;
+    padding: 20px;
+  `
 
   // 深度克隆（包含子元素样式）
   const clone = element.cloneNode(true) as HTMLElement
-  clone.style.cssText = window.getComputedStyle(element).cssText // 继承计算样式
-  clone.style.width = `100%`
-  clone.style.height = `auto`
+  Object.assign(clone.style, {
+    width: `100%`,
+    height: `auto`,
+    position: `relative`, // 新增定位方式
+    overflow: `visible`,
+    transform: `none`, // 重置变换
+    transformOrigin: `top left`,
+  })
 
   // 处理动态样式（参考 demo 实现）
   const styleSheets = Array.from(document.styleSheets)
@@ -71,21 +77,32 @@ export async function exportImage(_primaryColor: string): Promise<string> {
   try {
     // 等待资源加载（关键步骤）
     await preloadImages()
-    await document.fonts.ready // 等待字体加载
+    await document.fonts.ready
 
-    // 添加渲染保障
-    await new Promise(resolve => setTimeout(resolve, 100))
+    console.log(`✅ 资源加载完成`)
+    console.log(`📐 容器尺寸:`, container.offsetWidth, `x`, container.offsetHeight)
+    console.log(`🖼️ 包含图片数量:`, clone.querySelectorAll(`img`).length)
 
-    // 生成图片（调整参数）
+    // 新增渲染保障步骤
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve))
+    })
+
+    // 添加可视化调试
+    container.style.border = `2px solid red` // 临时边框用于确认容器可见性
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    console.log(`🔄 最终克隆内容:`, `${clone.outerHTML.slice(0, 200)}...`) // 输出部分HTML结构
+    console.log(`🎨 计算样式:`, window.getComputedStyle(clone).getPropertyValue(`opacity`))
+
     return await domtoimage.toPng(container, {
-      quality: 1, // 最高质量
+      quality: 1,
       bgcolor: `#ffffff`,
-      width: originalWidth,
-      height: originalHeight,
+      width: originalWidth * 2, // 添加 2 倍缩放（解决高分屏问题）
+      height: originalHeight * 2,
       style: {
-        transform: `none`,
-        visibility: `visible`, // 强制可见
-        opacity: `1`, // 防止透明
+        transform: `scale(2)`, // 匹配缩放
+        transformOrigin: `top left`,
       },
       filter: (node) => {
         if (node instanceof HTMLElement) {
