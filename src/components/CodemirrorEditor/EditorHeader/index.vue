@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ExportImageDialog } from '@/components/ExportImageDialog'
 import { Toaster } from '@/components/ui/sonner'
 import {
   altSign,
@@ -55,6 +56,9 @@ const copyMode = useStorage(addPrefix(`copyMode`), `txt`)
 const source = ref(``)
 const { copy: copyContent } = useClipboard({ source })
 
+// 添加弹窗控制状态
+const isExportDialogOpen = ref(false)
+
 // 复制到微信公众号
 function copy() {
   emit(`startCopy`)
@@ -100,9 +104,15 @@ function copy() {
   }, 350)
 }
 
-// 添加导出图片的处理函数
+// 修改导出图片处理函数，直接打开弹窗
 function handleExportImage() {
-  emit(`exportImage`)
+  isExportDialogOpen.value = true
+}
+
+// 处理下载事件
+function handleDownload() {
+  // 暂时留空，后续实现导出图片功能
+  console.log(`开始下载图片`)
 }
 </script>
 
@@ -205,6 +215,12 @@ function handleExportImage() {
 
       <Toaster rich-colors position="top-center" />
     </div>
+
+    <!-- 添加导出图片弹窗组件 -->
+    <ExportImageDialog
+      v-model:open="isExportDialogOpen"
+      @download="handleDownload"
+    />
   </header>
 </template>
 
