@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useStore } from '@/stores'
 import { exportImage } from '@/utils'
-import { onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { ref, watch } from 'vue'
 
 const props = defineProps<{
   open: boolean
@@ -23,36 +24,57 @@ const emit = defineEmits<{
 }>()
 
 const store = useStore()
-const { primaryColor } = storeToRefs(store)
-
-// 存储预览图片的 URL
+const { primaryColor, isDark, output } = storeToRefs(store)
 const previewUrl = ref('')
+const isGenerating = ref(false)
 
-// 监听弹窗打开状态，生成预览图
+// 与主编辑器一致的预览容器引用
+const outputWrapper = ref<HTMLElement | null>(null)
+
 watch(() => props.open, async (newVal) => {
   if (newVal) {
     try {
+      isGenerating.value = true
+      const wasInDarkMode = isDark.value
+      
+      // 临时切换主题（与主编辑器逻辑一致）
+      if (wasInDarkMode) {
+        store.toggleDark()
+      }
+
+      // 使用主编辑器的渲染结果
+      await nextTick()
       previewUrl.value = await exportImage(primaryColor.value)
+
+      // 恢复主题
+      if (wasInDarkMode) {
+        store.toggleDark()
+      }
     } catch (error) {
-      console.error('生成预览图失败:', error)
-      // 这里可以添加错误提示
+      console.error('生成预览失败:', error)
+    } finally {
+      isGenerating.value = false
     }
   }
 })
 
-// 处理下载
+// 保持与主编辑器一致的下载逻辑
 async function handleDownload() {
   if (!previewUrl.value) return
   
-  const link = document.createElement('a')
-  link.download = 'content.png'
-  link.href = previewUrl.value
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  
-  emit('download')
-  emit('update:open', false)
+  try {
+    const link = document.createElement('a')
+    link.download = `md-content-${new Date().getTime()}.png`
+    link.href = previewUrl.value
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    emit('download')
+    emit('update:open', false)
+  } catch (error) {
+    console.error('下载失败:', error)
+  }
 }
 </script>
 
@@ -60,19 +82,37 @@ async function handleDownload() {
   <AlertDialog :open="open" @update:open="emit('update:open', $event)">
     <AlertDialogContent class="sm:max-w-[800px]">
       <AlertDialogHeader>
-        <AlertDialogTitle>导出图片预览</AlertDialogTitle>
+        <AlertDialogTitle>导出预览</AlertDialogTitle>
         <AlertDialogDescription>
-          请确认以下预览内容是否符合预期
+          请确认以下内容是否符合预期
         </AlertDialogDescription>
       </AlertDialogHeader>
 
-      <!-- 预览区域 -->
-      <div class="my-4 max-h-[60vh] overflow-auto border rounded-md p-4">
-        <div v-if="previewUrl" class="flex justify-center">
-          <img :src="previewUrl" alt="预览图片" class="max-w-full" />
-        </div>
-        <div v-else class="text-center py-4 text-gray-500">
-          正在生成预览...
+      <!-- 与主编辑器一致的预览结构 -->
+      <div class="my-4 overflow-hidden rounded-md border max-h-[60vh] p-4">
+        <div 
+          id="output-wrapper" 
+          ref="outputWrapper"
+          class="relative h-full"
+          :class="{ output_night: isDark }"
+        >
+          <div class="h-full overflow-auto preview">
+            <!-- 实时渲染内容 -->
+            <section 
+              v-if="output"
+              id="output"
+              class="prose dark:prose-invert max-w-none p-4"
+              v-html="output"
+            />
+            
+            <!-- 加载状态 -->
+            <div v-if="isGenerating" class="loading-mask">
+              <div class="loading-mask-box">
+                <div class="loading__img" />
+                <span>正在生成预览...</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -81,9 +121,37 @@ async function handleDownload() {
           取消
         </AlertDialogCancel>
         <AlertDialogAction @click="handleDownload">
-          下载图片
+          导出图片
         </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
-</template> 
+</template>
+
+<style lang="postcss" scoped>
+.loading-mask {
+  @apply absolute inset-0 flex items-center justify-center bg-background/90;
+
+  .loading-mask-box {
+    @apply flex flex-col items-center gap-2;
+
+    .loading__img {
+      @apply h-12 w-12 animate-pulse bg-[url('@/assets/images/favicon.png')] bg-contain bg-no-repeat opacity-75;
+    }
+
+    span {
+      @apply text-sm text-muted-foreground;
+    }
+  }
+}
+
+.preview {
+  &::-webkit-scrollbar {
+    @apply h-2 w-2;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+  }
+}
+</style>
