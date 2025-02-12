@@ -19,7 +19,7 @@ export async function exportImage(_primaryColor: string): Promise<string> {
 
   container.style.cssText = `
     position: fixed;
-    left: 0px;
+    left: -9999px;  // 移出可视区域
     top: 0;
     width: ${originalWidth}px;
     height: ${originalHeight}px;
@@ -88,9 +88,16 @@ export async function exportImage(_primaryColor: string): Promise<string> {
       requestAnimationFrame(() => requestAnimationFrame(resolve))
     })
 
-    // 添加可视化调试
-    container.style.border = `2px solid red` // 临时边框用于确认容器可见性
-    await new Promise(resolve => setTimeout(resolve, 50))
+    // 在生成图片前临时显示
+    container.style.left = `0px` // 临时定位到可视区域
+    await new Promise(resolve => requestAnimationFrame(resolve)) // 等待布局更新
+
+    // 替换原有调试代码
+    if (import.meta.env.DEV) {
+      console.log(`调试容器结构:`, container.outerHTML)
+      // 使用透明边框调试
+      container.style.boxShadow = `0 0 0 2px rgba(255,0,0,0.3)`
+    }
 
     console.log(`🔄 最终克隆内容:`, `${clone.outerHTML.slice(0, 200)}...`) // 输出部分HTML结构
     console.log(`🎨 计算样式:`, window.getComputedStyle(clone).getPropertyValue(`opacity`))

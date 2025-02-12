@@ -18,10 +18,10 @@ const props = defineProps<{
   open: boolean
 }>()
 
-const emit = defineEmits<{
-  (e: `update:open`, value: boolean): void
-  (e: `download`): void
-}>()
+const emit = defineEmits({
+  'update:open': (_value: boolean) => true,
+  'download': () => true,
+})
 
 const store = useStore()
 const { primaryColor, isDark, output } = storeToRefs(store)
@@ -135,7 +135,7 @@ async function handleDownload() {
           取消
         </AlertDialogCancel>
         <AlertDialogAction @click="handleDownload">
-          导出图片
+          下载图片
         </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
