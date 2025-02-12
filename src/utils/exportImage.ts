@@ -109,26 +109,17 @@ export async function exportImage(
       requestAnimationFrame(() => requestAnimationFrame(resolve))
     })
 
-    // 修改临时定位逻辑（新增边距补偿）
-    container.style.left = `${margins.left}px` // 左边距补偿
-    container.style.top = `${margins.top}px` // 上边距补偿
+    // 修改临时定位逻辑
+    container.style.left = `0px` //
+    container.style.top = `0px` //
     container.style.zIndex = `9999` // 确保在最顶层
     await new Promise(resolve => requestAnimationFrame(resolve))
 
     // 替换原有调试代码
     if (import.meta.env.DEV) {
       console.log(`调试容器结构:`, container.outerHTML)
-      // 修改为双色边框并增加可视区域
-      container.style.boxShadow = `
-        0 0 0 2px rgba(255,0,0,0.3),   // 红色外边框
-        inset 0 0 0 2px rgba(0,0,255,0.3) // 蓝色内边框
-      `
-      // 临时调整定位到可视区域中心
-      container.style.left = `50%`
-      container.style.top = `50%`
-      container.style.transform = `translate(-50%, -50%)`
-      // 添加过渡效果便于观察
-      container.style.transition = `all 0.3s`
+      // 使用透明边框调试
+      container.style.boxShadow = `0 0 0 2px rgba(255,0,0,0.3)`
     }
 
     console.log(`🔄 最终克隆内容:`, `${clone.outerHTML.slice(0, 200)}...`) // 输出部分HTML结构
