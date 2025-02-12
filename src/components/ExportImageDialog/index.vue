@@ -12,9 +12,9 @@ import {
 import { useStore } from '@/stores'
 import { exportImage } from '@/utils'
 import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 
-const props = defineProps<{
+defineProps<{
   open: boolean
 }>()
 
@@ -25,46 +25,40 @@ const emit = defineEmits({
 
 const store = useStore()
 const { primaryColor, isDark, output } = storeToRefs(store)
-const previewUrl = ref<string | string[]>(``)
 const isGenerating = ref(false)
 
 // 与主编辑器一致的预览容器引用
 const outputWrapper = ref<HTMLElement | null>(null)
 
-watch(() => props.open, async (newVal) => {
-  if (newVal) {
-    try {
-      isGenerating.value = true
-
-      // 强制显示预览容器并等待布局稳定
-      await nextTick()
-      const container = outputWrapper.value!
-      container.style.display = `block`
-      await new Promise(resolve => requestAnimationFrame(resolve))
-
-      // 生成图片前强制重绘
-      void container.offsetHeight // 明确表示有意使用副作用
-
-      previewUrl.value = await exportImage(
-        primaryColor.value,
-        isDark.value ? `#191919` : `#ffffff`,
-      )
-    }
-    finally {
-      isGenerating.value = false
-    }
-  }
-})
-
-// 保持与主编辑器一致的下载逻辑
+// 修改后的下载处理函数
 async function handleDownload() {
-  if (!previewUrl.value)
+  if (!outputWrapper.value)
     return
 
   try {
-    // 处理分片情况
-    if (Array.isArray(previewUrl.value)) {
-      previewUrl.value.forEach((url, index) => {
+    isGenerating.value = true
+
+    // 显示预览容器并准备布局
+    const container = outputWrapper.value
+    container.style.display = `block`
+    await nextTick()
+
+    // 等待布局稳定
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    void container.offsetHeight // 强制重绘
+
+    // 执行导出
+    const urls = await exportImage(
+      primaryColor.value,
+      isDark.value ? `#191919` : `#ffffff`,
+      { top: 20, right: 20, bottom: 100, left: 20 },
+      560,
+      { enable: true }, // 默认分片配置
+    )
+
+    // 处理下载
+    if (Array.isArray(urls)) {
+      urls.forEach((url, index) => {
         const link = document.createElement(`a`)
         link.download = `md-content-${index + 1}-${new Date().getTime()}.png`
         link.href = url
@@ -73,11 +67,10 @@ async function handleDownload() {
         document.body.removeChild(link)
       })
     }
-    // 处理单图情况
     else {
       const link = document.createElement(`a`)
       link.download = `md-content-${new Date().getTime()}.png`
-      link.href = previewUrl.value
+      link.href = urls
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -87,7 +80,12 @@ async function handleDownload() {
     emit(`update:open`, false)
   }
   catch (error) {
-    console.error(`下载失败:`, error)
+    console.error(`导出失败:`, error)
+  }
+  finally {
+    isGenerating.value = false
+    // 隐藏预览容器
+    outputWrapper.value.style.display = `none`
   }
 }
 </script>

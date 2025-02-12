@@ -161,7 +161,9 @@ export async function exportImage(
       for (let i = 0; i < slices; i++) {
         const sliceClone = clone.cloneNode(true) as HTMLElement
         const startY = i * effectiveHeight
-        const endY = Math.min(startY + sliceHeight, totalHeight)
+        const endY = (i === slices - 1)
+          ? totalHeight
+          : startY + sliceHeight
         const currentHeight = endY - startY
 
         // 设置分片样式
@@ -169,8 +171,26 @@ export async function exportImage(
         sliceClone.style.transform = `translateY(-${startY}px)`
         sliceClone.style.width = `${finalOutputWidth - margins.left - margins.right}px`
 
+        // 新增图片预加载处理
+        const slicePreload = () => {
+          const images = sliceClone.querySelectorAll(`img`)
+          return Promise.all(Array.from(images).map(img =>
+            new Promise((resolve) => {
+              if (img.complete)
+                return resolve(true)
+              img.onload = resolve
+              img.onerror = resolve
+            }),
+          ))
+        }
+
         sliceContainer.innerHTML = ``
         sliceContainer.appendChild(sliceClone)
+
+        // 新增等待逻辑（与主容器保持一致）
+        await slicePreload() // 等待分片图片加载
+        await document.fonts.ready // 等待字体加载
+        await new Promise(resolve => setTimeout(resolve, 500)) // 增加渲染等待时间
 
         // 仅调整分片容器位置
         sliceContainer.style.left = `0px`
