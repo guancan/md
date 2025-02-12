@@ -1,16 +1,28 @@
 module.exports = {
+  root: true, // 标记为根配置文件
+  parser: `vue-eslint-parser`, // 使用 vue 解析器
+  parserOptions: {
+    parser: `@typescript-eslint/parser`, // TypeScript 解析器
+    ecmaVersion: `latest`,
+    sourceType: `module`,
+  },
+  extends: [
+    `plugin:vue/vue3-recommended`, // Vue3 推荐规则
+    `plugin:@typescript-eslint/recommended`, // TypeScript 推荐规则
+  ],
   rules: {
-    'unused-imports/no-unused-vars': `warn`, // 将错误降级为警告
-    'quotes': [`error`, `double`], // 强制使用双引号
+    'quotes': [`error`, `double`],
+    'unused-imports/no-unused-vars': `warn`,
   },
   overrides: [
     {
-      files: [`*.d.ts`], // 针对所有的 .d.ts 文件
+      files: [`*.d.ts`],
       rules: {
-        'quotes': `off`, // 关闭引号检查
-        '@typescript-eslint/quotes': `off`, // 关闭 TypeScript 的引号检查
+        'quotes': `off`,
+        '@typescript-eslint/quotes': `off`,
         '@typescript-eslint/naming-convention': `off`,
         '@typescript-eslint/no-explicit-any': `off`,
+        '@typescript-eslint/ban-types': `off`,
       },
     },
   ],

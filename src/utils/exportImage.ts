@@ -75,9 +75,51 @@ export async function exportImage(_primaryColor: string): Promise<string> {
   document.body.appendChild(container)
 
   try {
-    // 等待资源加载（关键步骤）
+    // 等待资源加载
     await preloadImages()
     await document.fonts.ready
+
+    // 新增调试环节（仅开发环境）
+    if (import.meta.env.DEV) {
+      // 显示临时容器
+      container.style.left = `0px`
+      container.style.top = `0px`
+      container.style.boxShadow = `0 0 0 3px rgba(255,0,0,0.8)` // 红色高亮边框
+
+      // 创建调试浮层
+      const debugOverlay = document.createElement(`div`)
+      debugOverlay.style.cssText = `
+            position: fixed;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2em;
+        `
+      debugOverlay.innerHTML = `
+            <div style="background: white; padding: 20px; border-radius: 8px;">
+                <div>临时容器预览（3秒后关闭）</div>
+                <div>实际尺寸：${container.offsetWidth} x ${container.offsetHeight}</div>
+            </div>
+        `
+
+      document.body.appendChild(debugOverlay)
+
+      // 设置3秒后自动清除
+      setTimeout(() => {
+        document.body.removeChild(debugOverlay)
+        container.style.left = `-9999px`
+      }, 3000)
+
+      // 暂停后续流程
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
 
     console.log(`✅ 资源加载完成`)
     console.log(`📐 容器尺寸:`, container.offsetWidth, `x`, container.offsetHeight)
