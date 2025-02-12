@@ -139,7 +139,10 @@ export async function exportImage(
       const totalHeight = clone.scrollHeight
       const overlap = sliceHeight * (redundancyPercent / 100)
       const effectiveHeight = sliceHeight - overlap
-      const slices = Math.ceil(totalHeight / effectiveHeight)
+
+      // 修正分片数量计算（增加冗余补偿）
+      const slices = Math.ceil((totalHeight + overlap) / effectiveHeight)
+
       const results: string[] = []
 
       // 创建分片专用容器（替代主容器）
@@ -149,6 +152,7 @@ export async function exportImage(
         left: -9999px;
         top: 0;
         width: ${finalOutputWidth}px;
+        height: ${effectiveHeight + margins.top + margins.bottom}px;
         overflow: hidden;
         background: ${backgroundColor};
         z-index: 9999;
@@ -161,15 +165,18 @@ export async function exportImage(
       for (let i = 0; i < slices; i++) {
         const sliceClone = clone.cloneNode(true) as HTMLElement
         const startY = i * effectiveHeight
-        const endY = (i === slices - 1)
-          ? totalHeight
-          : startY + sliceHeight
+        // 修正结束位置计算（允许超出一部分冗余）
+        const endY = Math.min(
+          startY + sliceHeight,
+          totalHeight + overlap, // 新增补偿逻辑
+        )
         const currentHeight = endY - startY
 
         // 设置分片样式
-        sliceContainer.style.height = `${currentHeight}px`
+        sliceContainer.style.height = `${currentHeight + margins.top + margins.bottom}px`
         sliceClone.style.transform = `translateY(-${startY}px)`
         sliceClone.style.width = `${finalOutputWidth - margins.left - margins.right}px`
+        sliceClone.style.height = `${currentHeight}px`
 
         // 新增图片预加载处理
         const slicePreload = () => {
@@ -200,7 +207,7 @@ export async function exportImage(
 
         const sliceDataUrl = await domtoimage.toPng(sliceContainer, {
           width: finalOutputWidth * 2,
-          height: currentHeight * 2,
+          height: (currentHeight + margins.top + margins.bottom) * 2,
           style: {
             transform: `scale(2) translate(0, 0)`,
             transformOrigin: `top left`,
