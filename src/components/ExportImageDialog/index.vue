@@ -9,6 +9,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { useStore } from '@/stores'
 import { exportImage } from '@/utils'
 import { storeToRefs } from 'pinia'
@@ -29,6 +32,22 @@ const isGenerating = ref(false)
 
 // 与主编辑器一致的预览容器引用
 const outputWrapper = ref<HTMLElement | null>(null)
+
+// 新增配置参数
+const config = ref({
+  outputWidth: 560,
+  margins: {
+    top: 20,
+    right: 20,
+    bottom: 100,
+    left: 20,
+  },
+  sliceOptions: {
+    enable: true,
+    sliceHeight: 800,
+    redundancyPercent: 5,
+  },
+})
 
 // 修改后的下载处理函数
 async function handleDownload() {
@@ -51,9 +70,9 @@ async function handleDownload() {
     const urls = await exportImage(
       primaryColor.value,
       isDark.value ? `#191919` : `#ffffff`,
-      { top: 20, right: 20, bottom: 100, left: 20 },
-      560,
-      { enable: true }, // 默认分片配置
+      config.value.margins,
+      config.value.outputWidth,
+      config.value.sliceOptions,
     )
 
     // 处理下载
@@ -94,13 +113,75 @@ async function handleDownload() {
   <AlertDialog :open="open" @update:open="emit('update:open', $event)">
     <AlertDialogContent class="sm:max-w-[800px]">
       <AlertDialogHeader>
-        <AlertDialogTitle>导出预览</AlertDialogTitle>
+        <AlertDialogTitle>导出配置</AlertDialogTitle>
         <AlertDialogDescription>
-          请确认以下内容是否符合预期
+          调整图片导出参数以获得最佳效果
         </AlertDialogDescription>
       </AlertDialogHeader>
 
-      <!-- 与主编辑器一致的预览结构 -->
+      <!-- 参数配置区域 -->
+      <div class="space-y-4">
+        <!-- 基础配置调整为单列 -->
+        <div class="space-y-2">
+          <Label>输出宽度 (px)</Label>
+          <Input v-model.number="config.outputWidth" type="number" min="160" max="1200" />
+        </div>
+
+        <!-- 边距配置 -->
+        <div class="grid grid-cols-4 gap-2">
+          <div class="space-y-2">
+            <Label>上边距</Label>
+            <Input v-model.number="config.margins.top" type="number" />
+          </div>
+          <div class="space-y-2">
+            <Label>右边距</Label>
+            <Input v-model.number="config.margins.right" type="number" />
+          </div>
+          <div class="space-y-2">
+            <Label>下边距</Label>
+            <Input v-model.number="config.margins.bottom" type="number" />
+          </div>
+          <div class="space-y-2">
+            <Label>左边距</Label>
+            <Input v-model.number="config.margins.left" type="number" />
+          </div>
+        </div>
+
+        <!-- 分片配置调整为一行三列 -->
+        <div class="flex flex-wrap items-end gap-4">
+          <!-- 启用开关 -->
+          <div class="min-w-[200px] flex flex-1 items-center gap-2">
+            <Switch v-model:checked="config.sliceOptions.enable" />
+            <Label>启用分片导出</Label>
+          </div>
+
+          <!-- 分片高度 -->
+          <div class="space-y-2 min-w-[200px] flex-1">
+            <Label>分片高度 (px)</Label>
+            <Input
+              v-model.number="config.sliceOptions.sliceHeight"
+              type="number"
+              min="400"
+              max="2000"
+              :disabled="!config.sliceOptions.enable"
+            />
+          </div>
+
+          <!-- 分片冗余 -->
+          <div class="space-y-2 min-w-[200px] flex-1">
+            <Label>分片冗余 (%)</Label>
+            <Input
+              v-model.number="config.sliceOptions.redundancyPercent"
+              type="number"
+              min="1"
+              max="20"
+              :disabled="!config.sliceOptions.enable"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- 预览区域保持不变 -->
       <div class="my-4 max-h-[60vh] overflow-hidden border rounded-md p-4">
         <div
           id="output-wrapper"
