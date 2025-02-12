@@ -3,9 +3,13 @@ import domtoimage from 'dom-to-image'
 /**
  * 导出 HTML 内容为图片
  * @param _primaryColor - 主题色
+ * @param backgroundColor - 背景色
  * @returns 返回图片的 URL
  */
-export async function exportImage(_primaryColor: string): Promise<string> {
+export async function exportImage(
+  _primaryColor: string,
+  backgroundColor: string,
+): Promise<string> {
   const element = document.querySelector(`#output`)!
 
   // 添加渲染状态检查
@@ -24,19 +28,21 @@ export async function exportImage(_primaryColor: string): Promise<string> {
     width: ${originalWidth}px;
     height: ${originalHeight}px;
     overflow: visible;
-    background: #fff;
+    background: ${backgroundColor};
     z-index: 9999;
     padding: 20px;
+    color: ${window.getComputedStyle(element).color};
   `
 
-  // 深度克隆（包含子元素样式）
+  // 深度克隆时保留主题类名
   const clone = element.cloneNode(true) as HTMLElement
+  clone.className = element.className // 保留原始类名
   Object.assign(clone.style, {
     width: `100%`,
     height: `auto`,
-    position: `relative`, // 新增定位方式
+    position: `relative`,
     overflow: `visible`,
-    transform: `none`, // 重置变换
+    transform: `none`,
     transformOrigin: `top left`,
   })
 
@@ -108,11 +114,11 @@ export async function exportImage(_primaryColor: string): Promise<string> {
 
     return await domtoimage.toPng(container, {
       quality: 1,
-      bgcolor: `#ffffff`,
-      width: originalWidth * 2, // 添加 2 倍缩放（解决高分屏问题）
+      bgcolor: backgroundColor,
+      width: originalWidth * 2,
       height: originalHeight * 2,
       style: {
-        transform: `scale(2)`, // 匹配缩放
+        transform: `scale(2)`,
         transformOrigin: `top left`,
       },
       filter: (node) => {

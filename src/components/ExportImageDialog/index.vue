@@ -45,7 +45,10 @@ watch(() => props.open, async (newVal) => {
       // 生成图片前强制重绘
       void container.offsetHeight // 明确表示有意使用副作用
 
-      previewUrl.value = await exportImage(primaryColor.value)
+      previewUrl.value = await exportImage(
+        primaryColor.value,
+        getComputedStyle(outputWrapper.value!).backgroundColor,
+      )
     }
     finally {
       isGenerating.value = false
