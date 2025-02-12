@@ -36,6 +36,7 @@ const outputWrapper = ref<HTMLElement | null>(null)
 // 新增配置参数
 const config = ref({
   outputWidth: 560,
+  scale: 2,
   margins: {
     top: 20,
     right: 20,
@@ -44,7 +45,7 @@ const config = ref({
   },
   sliceOptions: {
     enable: true,
-    sliceHeight: 800,
+    sliceHeight: 720,
     redundancyPercent: 5,
   },
 })
@@ -73,6 +74,7 @@ async function handleDownload() {
       config.value.margins,
       config.value.outputWidth,
       config.value.sliceOptions,
+      config.value.scale,
     )
 
     // 处理下载
@@ -121,10 +123,22 @@ async function handleDownload() {
 
       <!-- 参数配置区域 -->
       <div class="space-y-4">
-        <!-- 基础配置调整为单列 -->
-        <div class="space-y-2">
-          <Label>输出宽度 (px)</Label>
-          <Input v-model.number="config.outputWidth" type="number" min="160" max="1200" />
+        <!-- 基础配置调整为两列 -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-2">
+            <Label>输出宽度 (px)</Label>
+            <Input v-model.number="config.outputWidth" type="number" min="400" max="1200" />
+          </div>
+          <div class="space-y-2">
+            <Label>放大倍数</Label>
+            <Input
+              v-model.number="config.scale"
+              type="number"
+              min="1"
+              max="4"
+              step="0.5"
+            />
+          </div>
         </div>
 
         <!-- 边距配置 -->

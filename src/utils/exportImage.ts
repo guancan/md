@@ -10,6 +10,7 @@ import domtoimage from 'dom-to-image'
  * @param sliceOptions.enable - 是否启用分片（默认true）
  * @param sliceOptions.sliceHeight - 分片高度（默认800）
  * @param sliceOptions.redundancyPercent - 高度冗余百分比（默认5%）
+ * @param scale - 放大倍数
  * @returns 返回图片的 URL 或分片 URL 数组
  */
 export async function exportImage(
@@ -22,6 +23,7 @@ export async function exportImage(
     sliceHeight?: number
     redundancyPercent?: number
   } = { enable: true },
+  scale: number = 2,
 ): Promise<string | string[]> {
   const element = document.querySelector(`#output`)!
 
@@ -206,10 +208,10 @@ export async function exportImage(
         void sliceContainer.offsetHeight
 
         const sliceDataUrl = await domtoimage.toPng(sliceContainer, {
-          width: finalOutputWidth * 2,
-          height: (currentHeight + margins.top + margins.bottom) * 2,
+          width: finalOutputWidth * scale,
+          height: (currentHeight + margins.top + margins.bottom) * scale,
           style: {
-            transform: `scale(2) translate(0, 0)`,
+            transform: `scale(${scale}) translate(0, 0)`,
             transformOrigin: `top left`,
           },
           quality: 1,
@@ -234,10 +236,10 @@ export async function exportImage(
       void container.offsetHeight
 
       return await domtoimage.toPng(container, {
-        width: finalOutputWidth * 2,
-        height: exportHeight * 2,
+        width: finalOutputWidth * scale,
+        height: exportHeight * scale,
         style: {
-          transform: `scale(2) translate(0, 0)`,
+          transform: `scale(${scale}) translate(0, 0)`,
           transformOrigin: `top left`,
         },
         quality: 1,
