@@ -35,7 +35,6 @@ watch(() => props.open, async (newVal) => {
   if (newVal) {
     try {
       isGenerating.value = true
-      const wasInDarkMode = isDark.value
 
       // 强制显示预览容器并等待布局稳定
       await nextTick()
@@ -43,26 +42,10 @@ watch(() => props.open, async (newVal) => {
       container.style.display = `block`
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      // 临时切换主题（需要完整重绘）
-      if (wasInDarkMode) {
-        store.toggleDark()
-        await nextTick()
-        await new Promise((resolve) => {
-          // 确保主题切换后的重绘完成
-          requestAnimationFrame(() => requestAnimationFrame(resolve))
-        })
-      }
-
       // 生成图片前强制重绘
       void container.offsetHeight // 明确表示有意使用副作用
 
       previewUrl.value = await exportImage(primaryColor.value)
-
-      // 恢复主题
-      if (wasInDarkMode) {
-        store.toggleDark()
-        await nextTick()
-      }
     }
     finally {
       isGenerating.value = false
