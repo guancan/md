@@ -25,7 +25,7 @@ const emit = defineEmits({
 
 const store = useStore()
 const { primaryColor, isDark, output } = storeToRefs(store)
-const previewUrl = ref(``)
+const previewUrl = ref<string | string[]>(``)
 const isGenerating = ref(false)
 
 // 与主编辑器一致的预览容器引用
@@ -62,12 +62,26 @@ async function handleDownload() {
     return
 
   try {
-    const link = document.createElement(`a`)
-    link.download = `md-content-${new Date().getTime()}.png`
-    link.href = previewUrl.value
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    // 处理分片情况
+    if (Array.isArray(previewUrl.value)) {
+      previewUrl.value.forEach((url, index) => {
+        const link = document.createElement(`a`)
+        link.download = `md-content-${index + 1}-${new Date().getTime()}.png`
+        link.href = url
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      })
+    }
+    // 处理单图情况
+    else {
+      const link = document.createElement(`a`)
+      link.download = `md-content-${new Date().getTime()}.png`
+      link.href = previewUrl.value
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
 
     emit(`download`)
     emit(`update:open`, false)

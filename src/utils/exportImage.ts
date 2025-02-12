@@ -6,14 +6,23 @@ import domtoimage from 'dom-to-image'
  * @param backgroundColor - 背景色
  * @param margins - 边距对象，包含上、右、下、左四个方向的边距
  * @param outputWidth - 输出宽度
- * @returns 返回图片的 URL
+ * @param sliceOptions - 分片配置
+ * @param sliceOptions.enable - 是否启用分片（默认true）
+ * @param sliceOptions.sliceHeight - 分片高度（默认800）
+ * @param sliceOptions.redundancyPercent - 高度冗余百分比（默认5%）
+ * @returns 返回图片的 URL 或分片 URL 数组
  */
 export async function exportImage(
   _primaryColor: string,
   backgroundColor: string,
-  margins = { top: 50, right: 30, bottom: 100, left: 30 },
+  margins = { top: 20, right: 20, bottom: 100, left: 20 },
   outputWidth: number = 560,
-): Promise<string> {
+  sliceOptions: {
+    enable?: boolean
+    sliceHeight?: number
+    redundancyPercent?: number
+  } = { enable: true },
+): Promise<string | string[]> {
   const element = document.querySelector(`#output`)!
 
   // 等待 DOM 更新完成
@@ -118,48 +127,101 @@ export async function exportImage(
       requestAnimationFrame(() => requestAnimationFrame(resolve))
     })
 
-    // 调整容器位置用于捕获
-    container.style.left = `0px`
-    container.style.top = `0px`
-    container.style.zIndex = `9999`
-    await new Promise(resolve => requestAnimationFrame(resolve))
-
-    // 强制同步布局
-    void container.offsetHeight
-
-    if (import.meta.env.DEV) {
-      console.log(`📸 导出参数:`, {
-        width: finalOutputWidth * 2,
-        height: (container.scrollHeight) * 2,
-        margins,
-      })
-    }
-
     // 更新高度计算逻辑
     const exportHeight = clone.scrollHeight + margins.top + margins.bottom
 
-    // 调整缩放参数
-    return await domtoimage.toPng(container, {
-      width: finalOutputWidth * 2,
-      height: exportHeight * 2,
-      style: {
-        transform: `scale(2) translate(0, 0)`,
-        transformOrigin: `top left`,
-      },
-      quality: 1,
-      bgcolor: backgroundColor,
-      filter: (node) => {
-        if (node instanceof HTMLElement) {
-          const style = window.getComputedStyle(node)
-          return style.display !== `none`
-            && style.visibility !== `hidden`
-            && style.opacity !== `0`
-        }
-        return true
-      },
-    })
+    // 分片模式专用处理
+    if (sliceOptions?.enable ?? true) {
+      const {
+        sliceHeight = 800,
+        redundancyPercent = 5,
+      } = sliceOptions || {}
+      const totalHeight = clone.scrollHeight
+      const overlap = sliceHeight * (redundancyPercent / 100)
+      const effectiveHeight = sliceHeight - overlap
+      const slices = Math.ceil(totalHeight / effectiveHeight)
+      const results: string[] = []
+
+      // 创建分片专用容器（替代主容器）
+      const sliceContainer = document.createElement(`div`)
+      sliceContainer.style.cssText = `
+        position: fixed;
+        left: -9999px;
+        top: 0;
+        width: ${finalOutputWidth}px;
+        overflow: hidden;
+        background: ${backgroundColor};
+        z-index: 9999;
+        box-sizing: border-box;
+        padding: ${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px;
+      `
+      document.body.appendChild(sliceContainer)
+
+      // 直接使用克隆元素，避免主容器渲染
+      for (let i = 0; i < slices; i++) {
+        const sliceClone = clone.cloneNode(true) as HTMLElement
+        const startY = i * effectiveHeight
+        const endY = Math.min(startY + sliceHeight, totalHeight)
+        const currentHeight = endY - startY
+
+        // 设置分片样式
+        sliceContainer.style.height = `${currentHeight}px`
+        sliceClone.style.transform = `translateY(-${startY}px)`
+        sliceClone.style.width = `${finalOutputWidth - margins.left - margins.right}px`
+
+        sliceContainer.innerHTML = ``
+        sliceContainer.appendChild(sliceClone)
+
+        // 仅调整分片容器位置
+        sliceContainer.style.left = `0px`
+        sliceContainer.style.top = `0px`
+        await new Promise(resolve => requestAnimationFrame(resolve))
+        void sliceContainer.offsetHeight
+
+        const sliceDataUrl = await domtoimage.toPng(sliceContainer, {
+          width: finalOutputWidth * 2,
+          height: currentHeight * 2,
+          style: {
+            transform: `scale(2) translate(0, 0)`,
+            transformOrigin: `top left`,
+          },
+          quality: 1,
+          bgcolor: backgroundColor,
+        })
+        results.push(sliceDataUrl)
+
+        sliceContainer.style.left = `-9999px`
+      }
+
+      document.body.removeChild(sliceContainer)
+      return results
+    }
+
+    // 非分片模式使用主容器
+    else {
+      // 调整主容器位置
+      container.style.left = `0px`
+      container.style.top = `0px`
+      container.style.zIndex = `9999`
+      await new Promise(resolve => requestAnimationFrame(resolve))
+      void container.offsetHeight
+
+      return await domtoimage.toPng(container, {
+        width: finalOutputWidth * 2,
+        height: exportHeight * 2,
+        style: {
+          transform: `scale(2) translate(0, 0)`,
+          transformOrigin: `top left`,
+        },
+        quality: 1,
+        bgcolor: backgroundColor,
+      })
+    }
   }
   finally {
-    document.body.removeChild(container)
+    // 仅清理主容器（分片容器已单独处理）
+    if (container.parentElement) {
+      document.body.removeChild(container)
+    }
   }
 }
