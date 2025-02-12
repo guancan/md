@@ -102,11 +102,16 @@ async function handleDownload() {
   }
   catch (error) {
     console.error(`导出失败:`, error)
+    // 使用项目中的通知组件替代 alert，或添加 ESLint 例外注释
+    // eslint-disable-next-line no-alert
+    alert(`导出失败：${error instanceof Error ? error.message : `未知错误`}`)
   }
   finally {
     isGenerating.value = false
-    // 隐藏预览容器
-    outputWrapper.value.style.display = `none`
+    // 增加空值检查
+    if (outputWrapper.value) {
+      outputWrapper.value.style.display = `none`
+    }
   }
 }
 </script>

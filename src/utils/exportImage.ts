@@ -71,15 +71,20 @@ export async function exportImage(
     marginBottom: `0`,
   })
 
-  // 处理动态样式（参考 demo 实现）
+  // 修改样式表处理逻辑
   const styleSheets = Array.from(document.styleSheets)
     .map((sheet) => {
       try {
+        // 跳过跨域样式表
+        if (sheet.href && !sheet.href.startsWith(window.location.origin)) {
+          return ``
+        }
         return Array.from(sheet.cssRules)
           .map(rule => rule.cssText)
           .join(``)
       }
-      catch {
+      catch (error) {
+        console.warn(`无法读取样式表规则:`, sheet.href, error)
         return ``
       }
     })
@@ -111,8 +116,7 @@ export async function exportImage(
     await document.fonts.ready
     await new Promise(resolve => setTimeout(resolve, 1000))
 
-    if (import.meta.env.DEV) {
-      // 输出关键调试信息
+    if (import.meta.env.DEV && !sliceOptions?.enable) {
       console.groupCollapsed(`🔍 导出调试信息`)
       console.log(`容器尺寸:`, {
         width: container.offsetWidth,
@@ -165,61 +169,67 @@ export async function exportImage(
 
       // 直接使用克隆元素，避免主容器渲染
       for (let i = 0; i < slices; i++) {
-        const sliceClone = clone.cloneNode(true) as HTMLElement
-        const startY = i * effectiveHeight
-        // 修正结束位置计算（允许超出一部分冗余）
-        const endY = Math.min(
-          startY + sliceHeight,
-          totalHeight + overlap, // 新增补偿逻辑
-        )
-        const currentHeight = endY - startY
+        try {
+          const sliceClone = clone.cloneNode(true) as HTMLElement
+          const startY = i * effectiveHeight
+          // 修正结束位置计算（允许超出一部分冗余）
+          const endY = Math.min(
+            startY + sliceHeight,
+            totalHeight + overlap, // 新增补偿逻辑
+          )
+          const currentHeight = endY - startY
 
-        // 设置分片样式
-        sliceContainer.style.height = `${currentHeight + margins.top + margins.bottom}px`
-        sliceClone.style.transform = `translateY(-${startY}px)`
-        sliceClone.style.width = `${finalOutputWidth - margins.left - margins.right}px`
-        sliceClone.style.height = `${currentHeight}px`
+          // 设置分片样式
+          sliceContainer.style.height = `${currentHeight + margins.top + margins.bottom}px`
+          sliceClone.style.transform = `translateY(-${startY}px)`
+          sliceClone.style.width = `${finalOutputWidth - margins.left - margins.right}px`
+          sliceClone.style.height = `${currentHeight}px`
 
-        // 新增图片预加载处理
-        const slicePreload = () => {
-          const images = sliceClone.querySelectorAll(`img`)
-          return Promise.all(Array.from(images).map(img =>
-            new Promise((resolve) => {
-              if (img.complete)
-                return resolve(true)
-              img.onload = resolve
-              img.onerror = resolve
-            }),
-          ))
+          // 新增图片预加载处理
+          const slicePreload = () => {
+            const images = sliceClone.querySelectorAll(`img`)
+            return Promise.all(Array.from(images).map(img =>
+              new Promise((resolve) => {
+                if (img.complete)
+                  return resolve(true)
+                img.onload = resolve
+                img.onerror = resolve
+              }),
+            ))
+          }
+
+          sliceContainer.innerHTML = ``
+          sliceContainer.appendChild(sliceClone)
+
+          // 新增等待逻辑（与主容器保持一致）
+          await slicePreload() // 等待分片图片加载
+          await document.fonts.ready // 等待字体加载
+          await new Promise(resolve => setTimeout(resolve, 500)) // 增加渲染等待时间
+
+          // 仅调整分片容器位置
+          sliceContainer.style.left = `0px`
+          sliceContainer.style.top = `0px`
+          await new Promise(resolve => requestAnimationFrame(resolve))
+          void sliceContainer.offsetHeight
+
+          const sliceDataUrl = await domtoimage.toPng(sliceContainer, {
+            width: finalOutputWidth * scale,
+            height: (currentHeight + margins.top + margins.bottom) * scale,
+            style: {
+              transform: `scale(${scale}) translate(0, 0)`,
+              transformOrigin: `top left`,
+            },
+            quality: 1,
+            bgcolor: backgroundColor,
+          })
+          results.push(sliceDataUrl)
+
+          sliceContainer.style.left = `-9999px`
         }
-
-        sliceContainer.innerHTML = ``
-        sliceContainer.appendChild(sliceClone)
-
-        // 新增等待逻辑（与主容器保持一致）
-        await slicePreload() // 等待分片图片加载
-        await document.fonts.ready // 等待字体加载
-        await new Promise(resolve => setTimeout(resolve, 500)) // 增加渲染等待时间
-
-        // 仅调整分片容器位置
-        sliceContainer.style.left = `0px`
-        sliceContainer.style.top = `0px`
-        await new Promise(resolve => requestAnimationFrame(resolve))
-        void sliceContainer.offsetHeight
-
-        const sliceDataUrl = await domtoimage.toPng(sliceContainer, {
-          width: finalOutputWidth * scale,
-          height: (currentHeight + margins.top + margins.bottom) * scale,
-          style: {
-            transform: `scale(${scale}) translate(0, 0)`,
-            transformOrigin: `top left`,
-          },
-          quality: 1,
-          bgcolor: backgroundColor,
-        })
-        results.push(sliceDataUrl)
-
-        sliceContainer.style.left = `-9999px`
+        catch (error) {
+          console.error(`分片 ${i + 1}/${slices} 导出失败:`, error)
+          throw new Error(`分片 ${i + 1} 导出失败：${error instanceof Error ? error.message : `未知错误`}`)
+        }
       }
 
       document.body.removeChild(sliceContainer)
