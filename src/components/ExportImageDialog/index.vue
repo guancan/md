@@ -47,7 +47,7 @@ watch(() => props.open, async (newVal) => {
 
       previewUrl.value = await exportImage(
         primaryColor.value,
-        getComputedStyle(outputWrapper.value!).backgroundColor,
+        isDark.value ? `#191919` : `#ffffff`,
       )
     }
     finally {
