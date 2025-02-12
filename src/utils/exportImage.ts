@@ -5,12 +5,14 @@ import domtoimage from 'dom-to-image'
  * @param _primaryColor - 主题色
  * @param backgroundColor - 背景色
  * @param margins - 边距对象，包含上、右、下、左四个方向的边距
+ * @param outputWidth - 输出宽度
  * @returns 返回图片的 URL
  */
 export async function exportImage(
   _primaryColor: string,
   backgroundColor: string,
-  margins = { top: 20, right: 20, bottom: 100, left: 20 },
+  margins = { top: 50, right: 30, bottom: 100, left: 30 },
+  outputWidth: number = 560,
 ): Promise<string> {
   const element = document.querySelector(`#output`)!
 
@@ -22,6 +24,10 @@ export async function exportImage(
   const originalWidth = element.clientWidth || 800
   const originalHeight = element.scrollHeight || 600
 
+  // 计算实际使用的输出宽度和内容宽度
+  const finalOutputWidth = outputWidth || (originalWidth + margins.left + margins.right)
+  const contentWidth = finalOutputWidth - margins.left - margins.right
+
   if (import.meta.env.DEV) {
     console.log(`📐 原始尺寸:`, { width: originalWidth, height: originalHeight })
   }
@@ -31,21 +37,21 @@ export async function exportImage(
     position: fixed;
     left: -9999px;
     top: 0;
-    width: ${originalWidth + margins.left + margins.right}px;
+    width: ${finalOutputWidth}px;
     height: auto;
-    min-height: ${originalHeight + margins.top + margins.bottom}px;
     overflow: visible;
     background: ${backgroundColor};
     z-index: 9999;
     padding: ${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px;
     color: ${window.getComputedStyle(element).color};
+    box-sizing: border-box;
   `
 
   // 深度克隆时保留主题类名
   const clone = element.cloneNode(true) as HTMLElement
   clone.className = element.className // 保留原始类名
   Object.assign(clone.style, {
-    width: `calc(100% - ${margins.left + margins.right}px)`,
+    width: `${contentWidth}px`,
     height: `auto`,
     position: `relative`,
     overflow: `visible`,
@@ -123,18 +129,21 @@ export async function exportImage(
 
     if (import.meta.env.DEV) {
       console.log(`📸 导出参数:`, {
-        width: (originalWidth + margins.left + margins.right) * 2,
+        width: finalOutputWidth * 2,
         height: (container.scrollHeight) * 2,
         margins,
       })
     }
 
-    // 执行图片导出
+    // 更新高度计算逻辑
+    const exportHeight = clone.scrollHeight + margins.top + margins.bottom
+
+    // 调整缩放参数
     return await domtoimage.toPng(container, {
-      width: (originalWidth + margins.left + margins.right) * 2,
-      height: (container.scrollHeight) * 2,
+      width: finalOutputWidth * 2,
+      height: exportHeight * 2,
       style: {
-        transform: `scale(2) translate(${margins.left}px, ${margins.top}px)`,
+        transform: `scale(2) translate(0, 0)`,
         transformOrigin: `top left`,
       },
       quality: 1,
