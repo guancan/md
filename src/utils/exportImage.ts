@@ -16,11 +16,15 @@ export async function exportImage(
   await nextTick() // 等待 DOM 更新
   await new Promise(resolve => requestAnimationFrame(resolve)) // 等待下一帧渲染
 
-  // 创建临时容器（增加尺寸验证）
-  const container = document.createElement(`div`)
-  const originalWidth = element.clientWidth || 800 // 默认宽度
-  const originalHeight = element.scrollHeight || 600 // 默认高度
+  // 修改点1：增加尺寸计算日志
+  console.log(`📏 原始元素尺寸 - clientWidth:`, element.clientWidth, `scrollHeight:`, element.scrollHeight)
 
+  const container = document.createElement(`div`)
+  const originalWidth = element.clientWidth || 800
+  const originalHeight = element.scrollHeight || 600
+
+  // 修改点2：添加容器尺寸验证
+  console.log(`📦 容器初始尺寸:`, originalWidth, `x`, originalHeight)
   container.style.cssText = `
     position: fixed;
     left: -9999px;  // 移出可视区域
@@ -81,6 +85,10 @@ export async function exportImage(
   document.body.appendChild(container)
 
   try {
+    // 修改点3：在关键步骤添加尺寸日志
+    console.log(`🖨️ 渲染前容器尺寸:`, container.offsetWidth, `x`, container.offsetHeight)
+    console.log(`🖨️ 渲染前克隆元素尺寸:`, clone.offsetWidth, `x`, clone.offsetHeight)
+
     // 等待资源加载
     await preloadImages()
     await document.fonts.ready
@@ -112,15 +120,24 @@ export async function exportImage(
     console.log(`🔄 最终克隆内容:`, `${clone.outerHTML.slice(0, 200)}...`) // 输出部分HTML结构
     console.log(`🎨 计算样式:`, window.getComputedStyle(clone).getPropertyValue(`opacity`))
 
+    // 新增：强制同步布局
+    void container.offsetHeight // 触发重排
+
+    // 修改点4：最终尺寸验证
+    console.log(`✅ 最终容器尺寸:`, container.offsetWidth, `x`, container.offsetHeight)
+    console.log(`✅ 最终克隆元素尺寸:`, clone.offsetWidth, `x`, clone.offsetHeight)
+    console.log(`✅ 容器滚动高度:`, container.scrollHeight)
+
     return await domtoimage.toPng(container, {
-      quality: 1,
-      bgcolor: backgroundColor,
-      width: originalWidth * 2,
-      height: originalHeight * 2,
+      // 修改点5：调整缩放逻辑
+      width: container.offsetWidth * 2, // 使用实际计算的宽度
+      height: container.scrollHeight * 2, // 使用滚动高度而不是固定值
       style: {
         transform: `scale(2)`,
         transformOrigin: `top left`,
       },
+      quality: 1,
+      bgcolor: backgroundColor,
       filter: (node) => {
         if (node instanceof HTMLElement) {
           // 过滤隐藏元素
