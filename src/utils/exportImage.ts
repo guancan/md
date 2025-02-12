@@ -14,19 +14,19 @@ export async function exportImage(
 ): Promise<string> {
   const element = document.querySelector(`#output`)!
 
-  // 添加渲染状态检查
-  await nextTick() // 等待 DOM 更新
-  await new Promise(resolve => requestAnimationFrame(resolve)) // 等待下一帧渲染
-
-  // 修改点1：增加尺寸计算日志
-  console.log(`📏 原始元素尺寸 - clientWidth:`, element.clientWidth, `scrollHeight:`, element.scrollHeight)
+  // 等待 DOM 更新完成
+  await nextTick()
+  await new Promise(resolve => requestAnimationFrame(resolve))
 
   const container = document.createElement(`div`)
   const originalWidth = element.clientWidth || 800
   const originalHeight = element.scrollHeight || 600
 
-  // 修改点2：添加容器尺寸验证
-  console.log(`📦 容器初始尺寸:`, originalWidth, `x`, originalHeight)
+  if (import.meta.env.DEV) {
+    console.log(`📐 原始尺寸:`, { width: originalWidth, height: originalHeight })
+  }
+
+  // 设置临时容器样式
   container.style.cssText = `
     position: fixed;
     left: -9999px;
@@ -71,7 +71,7 @@ export async function exportImage(
   const styleTag = document.createElement(`style`)
   styleTag.textContent = styleSheets
 
-  // 处理图片预加载（关键修复点）
+  // 处理图片预加载
   const preloadImages = () => {
     const images = clone.querySelectorAll(`img`)
     return Promise.all(Array.from(images).map((img) => {
@@ -89,53 +89,47 @@ export async function exportImage(
   document.body.appendChild(container)
 
   try {
-    // 修改点3：在关键步骤添加尺寸日志
-    console.log(`🖨️ 渲染前容器尺寸:`, container.offsetWidth, `x`, container.offsetHeight)
-    console.log(`🖨️ 渲染前克隆元素尺寸:`, clone.offsetWidth, `x`, clone.offsetHeight)
-
     // 等待资源加载
     await preloadImages()
     await document.fonts.ready
-
-    // 增加缓冲时间
     await new Promise(resolve => setTimeout(resolve, 1000))
 
-    console.log(`✅ 资源加载完成`)
-    console.log(`📐 容器尺寸:`, container.offsetWidth, `x`, container.offsetHeight)
-    console.log(`🖼️ 包含图片数量:`, clone.querySelectorAll(`img`).length)
+    if (import.meta.env.DEV) {
+      // 输出关键调试信息
+      console.groupCollapsed(`🔍 导出调试信息`)
+      console.log(`容器尺寸:`, {
+        width: container.offsetWidth,
+        height: container.offsetHeight,
+        scrollHeight: container.scrollHeight,
+      })
+      console.log(`图片数量:`, clone.querySelectorAll(`img`).length)
+      console.log(`容器结构:`, container.outerHTML)
+      console.groupEnd()
+    }
 
-    // 新增渲染保障步骤
+    // 确保渲染完成
     await new Promise((resolve) => {
       requestAnimationFrame(() => requestAnimationFrame(resolve))
     })
 
-    // 修改临时定位逻辑
-    container.style.left = `0px` //
-    container.style.top = `0px` //
-    container.style.zIndex = `9999` // 确保在最顶层
+    // 调整容器位置用于捕获
+    container.style.left = `0px`
+    container.style.top = `0px`
+    container.style.zIndex = `9999`
     await new Promise(resolve => requestAnimationFrame(resolve))
 
-    // 替换原有调试代码
+    // 强制同步布局
+    void container.offsetHeight
+
     if (import.meta.env.DEV) {
-      console.log(`调试容器结构:`, container.outerHTML)
-      // 使用透明边框调试
-      container.style.boxShadow = `0 0 0 2px rgba(255,0,0,0.3)`
+      console.log(`📸 导出参数:`, {
+        width: (originalWidth + margins.left + margins.right) * 2,
+        height: (container.scrollHeight) * 2,
+        margins,
+      })
     }
 
-    console.log(`🔄 最终克隆内容:`, `${clone.outerHTML.slice(0, 200)}...`) // 输出部分HTML结构
-    console.log(`🎨 计算样式:`, window.getComputedStyle(clone).getPropertyValue(`opacity`))
-
-    // 新增：强制同步布局
-    void container.offsetHeight // 触发重排
-
-    // 修改点4：最终尺寸验证
-    console.log(`✅ 最终容器尺寸:`, container.offsetWidth, `x`, container.offsetHeight)
-    console.log(`✅ 最终克隆元素尺寸:`, clone.offsetWidth, `x`, clone.offsetHeight)
-    console.log(`✅ 容器滚动高度:`, container.scrollHeight)
-
-    console.log(`📍 临时定位坐标:`, margins.left, margins.top)
-    console.log(`📐 导出尺寸:`, (originalWidth + margins.left + margins.right) * 2, `x`, (container.scrollHeight) * 2)
-
+    // 执行图片导出
     return await domtoimage.toPng(container, {
       width: (originalWidth + margins.left + margins.right) * 2,
       height: (container.scrollHeight) * 2,
@@ -147,7 +141,6 @@ export async function exportImage(
       bgcolor: backgroundColor,
       filter: (node) => {
         if (node instanceof HTMLElement) {
-          // 过滤隐藏元素
           const style = window.getComputedStyle(node)
           return style.display !== `none`
             && style.visibility !== `hidden`
