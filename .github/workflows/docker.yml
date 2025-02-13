@@ -24,16 +24,16 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Build base image
-      run: bash scripts/build-base-image.sh guancan/md
+      run: bash scripts/build-base-image.sh travor223/md
 
     - name: Build nginx image
-      run: bash scripts/build-nginx.sh
+      run: bash scripts/build-nginx.sh travor223/md
 
     - name: Build standalone image
-      run: bash scripts/build-standalone.sh
+      run: bash scripts/build-standalone.sh travor223/md
 
     - name: Build static image
-      run: bash scripts/build-static.sh
+      run: bash scripts/build-static.sh travor223/md
 
     - name: Push images to Docker Hub
       run: bash scripts/push-images.sh
