@@ -9,7 +9,7 @@ jobs:
   build:
     name: Create Release
     runs-on: ubuntu-latest
-    if: github.repository == 'doocs/md'
+    if: github.repository == 'guancan/md'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,11 +22,8 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: ${{ github.ref }}
           body: |
-            # 微信 Markdown 编辑器 ${{ github.ref }} 发布🎈
-
-            [![github](https://badgen.net/badge/>>/GitHub/cyan)](https://github.com/doocs/md/releases) [![gitee](https://badgen.net/badge/>>/Gitee/cyan)](https://gitee.com/doocs/md/releases)
-
-            > Markdown 文档自动即时渲染为微信图文，让你不再为微信内容排版而发愁！
-
+            # Markdown 编辑器 ${{ github.ref }} 发布🎈
+            [![github](https://badgen.net/badge/>>/GitHub/cyan)](https://github.com/guancan/md/releases)
+            > 专业 Markdown 微信图文排版工具
           draft: false
           prerelease: false

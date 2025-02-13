@@ -1,4 +1,4 @@
-FROM doocs/md:latest-assets AS assets
+FROM guancan/md:latest-assets AS assets
 
 # detail https://github.com/lipanski/docker-static-website/blob/master/Dockerfile
 FROM lipanski/docker-static-website

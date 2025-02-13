@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: github.repository == 'doocs/md'
+    if: github.repository == 'guancan/md'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -24,7 +24,7 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Build base image
-      run: bash scripts/build-base-image.sh
+      run: bash scripts/build-base-image.sh guancan/md
 
     - name: Build nginx image
       run: bash scripts/build-nginx.sh
