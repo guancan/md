@@ -19,8 +19,8 @@ jobs:
 
     - name: Debug Docker Credentials
       run: |
-        echo "用户名是否存在: ${{ secrets.DOCKERHUB_USERNAME != null }}"
-        echo "令牌是否存在: ${{ secrets.DOCKERHUB_TOKEN != null }}"
+        echo "用户名存在校验: ${{ secrets.DOCKERHUB_USERNAME != null }}"
+        echo "令牌存在校验: ${{ secrets.DOCKERHUB_TOKEN != null }}"
         echo "用户名长度: ${#DOCKERHUB_USERNAME}"
         echo "令牌长度: ${#DOCKERHUB_TOKEN}"
       env:
