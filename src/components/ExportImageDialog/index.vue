@@ -14,6 +14,8 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useStore } from '@/stores'
 import { exportImage } from '@/utils'
+import { saveAs } from 'file-saver'
+import JSZip from 'jszip'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 
@@ -38,17 +40,54 @@ const config = ref({
   outputWidth: 560,
   scale: 2,
   margins: {
-    top: 20,
-    right: 20,
+    top: 50,
+    right: 40,
     bottom: 100,
-    left: 20,
+    left: 40,
   },
   sliceOptions: {
     enable: true,
     sliceHeight: 720,
     redundancyPercent: 5,
   },
+  zipDownload: true,
 })
+
+// 在现有代码中添加以下工具函数
+function getContentSnippet(content: string, maxLength: number) {
+  // 移除 HTML 标签并截取纯文本
+  const text = content.replace(/<[^>]+>/g, ``).trim()
+  // 过滤非法字符并截取
+  return (text.slice(0, maxLength) || `untitled`)
+    .replace(/[\\/:*?"<>|]/g, ``)
+    .replace(/\s+/g, `_`)
+}
+
+function getTimestamp() {
+  const now = new Date()
+  return now.toISOString()
+    .replace(/T/, `_`)
+    .replace(/\..+/, ``)
+    .replace(/:/g, ``)
+}
+
+function getFileName(type: `slice` | `full` | `zip`, totalSlices?: number) {
+  const content = output.value // 从 store 获取的原始内容
+  const baseName = type === `slice`
+    ? getContentSnippet(content, 12)
+    : getContentSnippet(content, 24)
+
+  const timestamp = getTimestamp() // 格式：2024-05-20_153015
+
+  switch (type) {
+    case `slice`:
+      return `${baseName}_[${totalSlices}片]_${timestamp}`
+    case `full`:
+      return `${baseName}_${timestamp}`
+    case `zip`:
+      return `${baseName}_[${totalSlices}片]_${timestamp}`
+  }
+}
 
 // 修改后的下载处理函数
 async function handleDownload() {
@@ -77,24 +116,57 @@ async function handleDownload() {
       config.value.scale,
     )
 
-    // 处理下载
-    if (Array.isArray(urls)) {
-      urls.forEach((url, index) => {
+    // 修改下载处理部分
+    if (config.value.zipDownload && Array.isArray(urls)) {
+      // ZIP 打包逻辑
+      const zip = new JSZip()
+      const zipName = getFileName(`zip`, urls.length)
+      const folderName = zipName.replace(/\.zip$/, ``) // 去除扩展名
+      const imgFolder = zip.folder(folderName) // 使用动态文件夹名称
+
+      // 并行获取所有图片 Blob
+      const blobPromises = urls.map(async (url, _index) => {
+        const response = await fetch(url)
+        return await response.blob()
+      })
+
+      const blobs = await Promise.all(blobPromises)
+
+      // 修改分片文件命名逻辑
+      blobs.forEach((blob, _index) => {
+        const index = _index + 1
+        const paddedIndex = index.toString().padStart(2, `0`) // 补零到两位
+        const fileName = `${paddedIndex}_${getContentSnippet(output.value, 12)}_part${index}.png`
+        imgFolder?.file(fileName, blob)
+      })
+
+      // 生成 ZIP 文件
+      const zipBlob = await zip.generateAsync({ type: `blob` })
+      saveAs(zipBlob, `${zipName}.zip`)
+    }
+    else {
+      // 原有单文件下载逻辑
+      if (Array.isArray(urls)) {
+        urls.forEach((url, index) => {
+          const paddedIndex = (index + 1).toString().padStart(2, `0`) // 补零到两位
+          const fileName = `${paddedIndex}_${getFileName(`slice`, urls.length)}_part${index + 1}.png`
+          const link = document.createElement(`a`)
+          link.download = fileName
+          link.href = url
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+        })
+      }
+      else {
+        const fileName = `${getFileName(`full`)}.png`
         const link = document.createElement(`a`)
-        link.download = `md-content-${index + 1}-${new Date().getTime()}.png`
-        link.href = url
+        link.download = fileName
+        link.href = urls
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-      })
-    }
-    else {
-      const link = document.createElement(`a`)
-      link.download = `md-content-${new Date().getTime()}.png`
-      link.href = urls
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      }
     }
 
     emit(`download`)

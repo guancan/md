@@ -158,12 +158,12 @@ export async function exportImage(
         left: -9999px;
         top: 0;
         width: ${finalOutputWidth}px;
-        height: ${effectiveHeight + margins.top + margins.bottom}px;
+        height: ${sliceHeight}px;
         overflow: hidden;
         background: ${backgroundColor};
         z-index: 9999;
         box-sizing: border-box;
-        padding: ${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px;
+        padding: 0 ${margins.right}px 0 ${margins.left}px;
       `
       document.body.appendChild(sliceContainer)
 
@@ -180,7 +180,7 @@ export async function exportImage(
           const currentHeight = endY - startY
 
           // 设置分片样式
-          sliceContainer.style.height = `${currentHeight + margins.top + margins.bottom}px`
+          sliceContainer.style.height = `${currentHeight}px`
           sliceClone.style.transform = `translateY(-${startY}px)`
           sliceClone.style.width = `${finalOutputWidth - margins.left - margins.right}px`
           sliceClone.style.height = `${currentHeight}px`
@@ -214,7 +214,7 @@ export async function exportImage(
 
           const sliceDataUrl = await domtoimage.toPng(sliceContainer, {
             width: finalOutputWidth * scale,
-            height: (currentHeight + margins.top + margins.bottom) * scale,
+            height: sliceHeight * scale,
             style: {
               transform: `scale(${scale}) translate(0, 0)`,
               transformOrigin: `top left`,

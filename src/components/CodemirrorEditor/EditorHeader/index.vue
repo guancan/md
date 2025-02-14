@@ -107,6 +107,7 @@ function copy() {
 // 修改导出图片处理函数，直接打开弹窗
 function handleExportImage() {
   isExportDialogOpen.value = true
+  // 将原始内容传递到导出组件，需要为 ExportImageDialog 添加 content prop
 }
 
 // 处理下载事件
