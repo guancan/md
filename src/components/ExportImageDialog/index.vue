@@ -277,12 +277,13 @@ async function handleDownload() {
         <div
           id="output-wrapper"
           ref="outputWrapper"
-          class="relative mx-auto h-full bg-white"
+          class="relative mx-auto h-full"
           :class="{ output_night: isDark }"
           :style="{
             maxWidth: `${config.outputWidth}px`,
             padding: `${config.margins.top}px ${config.margins.right}px ${config.margins.bottom}px ${config.margins.left}px`,
             boxShadow: '0 0 0 1px #e5e7eb',
+            backgroundColor: isDark ? '#191919' : '#ffffff',
           }"
         >
           <div class="preview h-full overflow-auto">
@@ -338,11 +339,14 @@ async function handleDownload() {
 
 .preview {
   &::-webkit-scrollbar {
-    @apply h-2 w-2;
+    display: none; /* 隐藏滚动条 */
+    width: 0; /* 移除滚动条占位 */
+    height: 0;
   }
 
-  &::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-border;
-  }
+  /* 兼容 Firefox */
+  scrollbar-width: none;
+  /* 兼容 IE/Edge */
+  -ms-overflow-style: none;
 }
 </style>
