@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import GlobalLoadingOverlay from '@/components/GlobalLoadingOverlay.vue'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +54,10 @@ const config = ref({
   zipDownload: true,
 })
 
+const progress = ref({
+  visible: false, // 仅保留可见状态
+})
+
 // 在现有代码中添加以下工具函数
 function getContentSnippet(content: string, maxLength: number) {
   // 移除 HTML 标签并截取纯文本
@@ -95,6 +100,7 @@ async function handleDownload() {
     return
 
   try {
+    progress.value.visible = true
     isGenerating.value = true
 
     // 显示预览容器并准备布局
@@ -179,6 +185,7 @@ async function handleDownload() {
     alert(`导出失败：${error instanceof Error ? error.message : `未知错误`}`)
   }
   finally {
+    progress.value.visible = false
     isGenerating.value = false
     // 增加空值检查
     if (outputWrapper.value) {
@@ -318,6 +325,8 @@ async function handleDownload() {
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
+
+  <GlobalLoadingOverlay :visible="progress.visible" />
 </template>
 
 <style lang="postcss" scoped>
