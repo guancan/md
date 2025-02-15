@@ -41,8 +41,8 @@ const config = ref({
   scale: 2,
   margins: {
     top: 50,
-    right: 40,
     bottom: 100,
+    right: 40,
     left: 40,
   },
   sliceOptions: {
@@ -225,16 +225,16 @@ async function handleDownload() {
             <Input v-model.number="config.margins.top" type="number" />
           </div>
           <div class="space-y-2">
-            <Label>右边距</Label>
-            <Input v-model.number="config.margins.right" type="number" />
-          </div>
-          <div class="space-y-2">
             <Label>下边距</Label>
             <Input v-model.number="config.margins.bottom" type="number" />
           </div>
           <div class="space-y-2">
             <Label>左边距</Label>
             <Input v-model.number="config.margins.left" type="number" />
+          </div>
+          <div class="space-y-2">
+            <Label>右边距</Label>
+            <Input v-model.number="config.margins.right" type="number" />
           </div>
         </div>
 
@@ -272,20 +272,27 @@ async function handleDownload() {
         </div>
       </div>
 
-      <!-- 预览区域保持不变 -->
-      <div class="my-4 max-h-[60vh] overflow-hidden border rounded-md p-4">
+      <!-- 预览区域 -->
+      <div class="my-4 max-h-[60vh] overflow-hidden border rounded-md bg-gray-50 p-4">
         <div
           id="output-wrapper"
           ref="outputWrapper"
-          class="relative h-full"
+          class="relative mx-auto h-full bg-white"
           :class="{ output_night: isDark }"
+          :style="{
+            maxWidth: `${config.outputWidth}px`,
+            padding: `${config.margins.top}px ${config.margins.right}px ${config.margins.bottom}px ${config.margins.left}px`,
+            boxShadow: '0 0 0 1px #e5e7eb',
+          }"
         >
           <div class="preview h-full overflow-auto">
-            <!-- 实时渲染内容 -->
             <section
               v-if="output"
               id="output"
-              class="prose dark:prose-invert max-w-none p-4"
+              class="prose dark:prose-invert max-w-none"
+              :style="{
+                width: `${config.outputWidth - config.margins.left - config.margins.right}px`,
+              }"
               v-html="output"
             />
 
