@@ -163,25 +163,33 @@ export async function exportImage(
         background: ${backgroundColor};
         z-index: 9999;
         box-sizing: border-box;
-        padding: 0 ${margins.right}px 0 ${margins.left}px;
+        padding: ${margins.top}px ${margins.right}px ${margins.bottom}px ${margins.left}px;
       `
       document.body.appendChild(sliceContainer)
 
       // 直接使用克隆元素，避免主容器渲染
       for (let i = 0; i < slices; i++) {
         try {
-          const sliceClone = clone.cloneNode(true) as HTMLElement
-          const startY = i * effectiveHeight
-          // 修正结束位置计算（允许超出一部分冗余）
+          const isLastSlice = i === slices - 1
+          // 计算补偿量时独立处理末片
+          const bottomCompensation = isLastSlice ? margins.bottom : 0
+
+          // 调整位置计算逻辑
+          const startY = i * effectiveHeight - (i === 0 ? 0 : margins.top * 0.5)
           const endY = Math.min(
-            startY + sliceHeight,
-            totalHeight + overlap, // 新增补偿逻辑
+            startY + sliceHeight + bottomCompensation,
+            totalHeight + overlap + (isLastSlice ? margins.bottom : 0), // 末片增加容错
           )
           const currentHeight = endY - startY
 
-          // 设置分片样式
-          sliceContainer.style.height = `${currentHeight}px`
-          sliceClone.style.transform = `translateY(-${startY}px)`
+          // 修正容器高度计算
+          const containerHeight = currentHeight + margins.top + margins.bottom
+          sliceContainer.style.height = `${containerHeight}px`
+
+          // 调整元素定位
+          const translateY = startY - (i === 0 ? 0 : margins.top * 0.5)
+          const sliceClone = clone.cloneNode(true) as HTMLElement
+          sliceClone.style.transform = `translateY(-${translateY}px)`
           sliceClone.style.width = `${finalOutputWidth - margins.left - margins.right}px`
           sliceClone.style.height = `${currentHeight}px`
 
